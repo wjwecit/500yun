@@ -1,5 +1,12 @@
 <?php
 require_once 'dbconfig.php';
+
+mysql_connect(Dbconfig::$db_host, Dbconfig::$db_username, Dbconfig::$db_pwd)or die('Could not connect: ' . mysql_error());
+mysql_select_db(Dbconfig::$db_name) or die('Could not select database');
+mysql_query("SET NAMES 'UTF8'");
+mysql_query("SET CHARACTER SET UTF8");
+mysql_query("SET CHARACTER_SET_RESULTS=UTF8'");
+
 class DB{
 	function __construct(){
 		print "Constructed \n";
@@ -9,22 +16,18 @@ class DB{
 		print "Destroying \n";
 	}
 
-	private static function  init(){
-		mysql_connect(Dbconfig::$db_host, Dbconfig::$db_username, Dbconfig::$db_pwd)or die('Could not connect: ' . mysql_error());
-		mysql_select_db(Dbconfig::$db_name) or die('Could not select database');
-		mysql_query("SET NAMES 'UTF8'");
-		mysql_query("SET CHARACTER SET UTF8");
-		mysql_query("SET CHARACTER_SET_RESULTS=UTF8'");
-	}
-
 	public static function update($sql){
-		self::init();
 		return mysql_query($sql)or die(self::mysql_msg(mysql_errno()));//不能连接数据库，用户名或密码错;
 	}
 
+	/**
+	 * 将一条map化的数组插入记录到表中.
+	 * @param string $tablename 数据表名
+	 * @param array $bean map化的数组
+	 * @return  操作成功返回true,否则返回false.
+	 */
 	public static function insert($tablename,$bean){
 		if(!$bean)return false;
-		self::init();
 		$sql_k="insert into ".$tablename."(";
 		$sql_v="values(";
 		while ($key=key($bean)){
@@ -40,13 +43,20 @@ class DB{
 		}
 		$sql_k=substr_replace($sql_k, ")", strlen($sql_k)-1);
 		$sql_v=substr_replace($sql_v, ")", strlen($sql_v)-1);
-		return mysql_query($sql_k.$sql_v);
+		return @mysql_query($sql_k.$sql_v);
 	}
 
-	public static function update($tablename,$bean,$key){
+	/**
+	 * 使用伪Map更新指定表名,指定主键的记录.
+	 *
+	 * @param string $tablename 数据表名
+	 * @param unknown_type $bean 伪Map
+	 * @param unknown_type $key 主键名
+	 * @return 更新成功返回true,否则false.
+	 */
+	public static function update_bean($tablename,$bean,$key){
 		if(!$bean)return false;
 		if(!$bean[$key])return false;
-		self::init();
 		$sql="update ".$tablename." set ";
 		while ($key=key($bean)){
 			if($key){
@@ -64,9 +74,12 @@ class DB{
 		return mysql_query($sql)>0;
 	}
 
+	/**
+	 * 依据sql查询,并将结果放入数组返回.
+	 * @param string $sql 执行的查询sql.
+	 */
 	public static function query($sql){
-		self::init();
-		$result=mysql_query($sql);
+		$result=@mysql_query($sql);
 		$arrayData=array();
 		while ($line = mysql_fetch_array($result, MYSQL_ASSOC)) {
 			$arrayData[]=$line;
@@ -74,7 +87,7 @@ class DB{
 		return $arrayData;
 	}
 
-	static function mysql_msg($errno=0){
+	public static function mysql_msg($errno=0){
 		$msg=array(
 		"1005"=>"创建表失败", 
 		"1006"=>"创建数据库失败",
@@ -143,7 +156,5 @@ class DB{
 			return ;
 		}
 	}
-
-
 }
 ?>
